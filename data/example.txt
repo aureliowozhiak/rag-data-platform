@@ -1,0 +1,13 @@
+Este é um documento de exemplo para testar a plataforma RAG.
+
+A plataforma RAG (Retrieval Augmented Generation) permite que sistemas de IA respondam perguntas baseadas em documentos específicos, combinando busca semântica com geração de texto.
+
+Principais componentes:
+- FastAPI para a API REST
+- PostgreSQL com pgvector para busca vetorial
+- MinIO para armazenamento de documentos
+- Ollama para geração de respostas com LLM local
+- Sentence-transformers para geração de embeddings
+
+Para usar, faça upload de documentos e depois faça perguntas usando o endpoint /rag.
+
