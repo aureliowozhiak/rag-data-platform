@@ -5,7 +5,6 @@ Configuração do banco de dados PostgreSQL com SQLAlchemy
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.dialects.postgresql import BYTEA
 import os
 from datetime import datetime
 
@@ -37,8 +36,12 @@ class Document(Base):
     filename = Column(String(255), nullable=False)
     file_path = Column(String(500), nullable=False)
     content = Column(Text)
-    embedding = Column(BYTEA)  # Armazenado como BYTEA, mas será usado como vector no SQL
-    metadata = Column(JSON)
+    # Mapeamos embedding como TEXT apenas para leitura (o tipo real no Postgres é vector)
+    # Isso evita problemas de adaptação de tipos com BYTEA e a extensão pgvector.
+    embedding = Column(Text)
+    # 'metadata' é um nome reservado na API declarativa do SQLAlchemy (Base.metadata)
+    # Por isso, usamos o nome de atributo 'extra_metadata', mas mantemos o nome da coluna como 'metadata'
+    extra_metadata = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

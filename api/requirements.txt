@@ -11,3 +11,8 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 PyPDF2==3.0.1
 python-docx==1.1.0
+
+# Compatibilidade com sentence-transformers 2.2.2
+# Versões mais novas de huggingface_hub removeram cached_download,
+# o que causa ImportError dentro do container da API.
+huggingface_hub==0.16.4

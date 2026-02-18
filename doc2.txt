@@ -1,0 +1,3 @@
+FastAPI é um framework web moderno e rápido para Python.
+É baseado em type hints e suporta async/await nativamente.
+FastAPI é uma das frameworks mais rápidas disponíveis.

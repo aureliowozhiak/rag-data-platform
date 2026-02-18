@@ -1,0 +1,3 @@
+Python é uma linguagem de programação de alto nível, interpretada e de propósito geral.
+Foi criada por Guido van Rossum e lançada em 1991.
+Python é conhecida por sua sintaxe simples e legibilidade.

@@ -43,26 +43,59 @@ class RAGService:
         """
         # Construir prompt RAG
         prompt = self._build_rag_prompt(query, context)
-        
+
+        payload_generate = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+
         try:
-            # Chamar Ollama API
+            # 1) Tentar endpoint clássico /api/generate
             response = await self.client.post(
                 f"{self.base_url}/api/generate",
-                json={
+                json=payload_generate,
+            )
+
+            # Se o servidor não conhecer /api/generate (404),
+            # fazemos fallback automático para /api/chat
+            if response.status_code == 404:
+                payload_chat = {
                     "model": self.model,
-                    "prompt": prompt,
+                    "messages": [
+                        {"role": "user", "content": prompt},
+                    ],
                     "stream": False,
                     "options": {
                         "temperature": temperature,
-                        "num_predict": max_tokens
-                    }
+                        "num_predict": max_tokens,
+                    },
                 }
-            )
-            
+                response = await self.client.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload_chat,
+                )
+
             response.raise_for_status()
             result = response.json()
-            
-            return result.get("response", "Erro ao gerar resposta")
+
+            # Estrutura típica de /api/generate
+            if "response" in result and isinstance(result["response"], str):
+                return result["response"]
+
+            # Estrutura típica de /api/chat
+            message = result.get("message") or {}
+            if isinstance(message, dict) and isinstance(
+                message.get("content"), str
+            ):
+                return message["content"]
+
+            # Fallback simples
+            return str(result)
         
         except httpx.HTTPError as e:
             raise Exception(f"Erro ao chamar Ollama: {e}")

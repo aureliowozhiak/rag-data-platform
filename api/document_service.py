@@ -4,6 +4,7 @@ Serviço para processamento de documentos
 
 import os
 import uuid
+import json
 from datetime import datetime
 from typing import Dict, Any
 from sqlalchemy.orm import Session
@@ -70,10 +71,25 @@ class DocumentService:
         # Converter embedding numpy para formato string para PostgreSQL
         embedding_str = "[" + ",".join(map(str, embedding.tolist())) + "]"
         
-        # Inserir no banco usando SQL direto para usar tipo vector
+        # Preparar metadados como JSON
+        metadata = {
+            "file_size": len(content),
+            "file_type": file_ext,
+        }
+        metadata_json = json.dumps(metadata)
+
+        # Inserir no banco usando SQL direto para usar tipo vector e jsonb
         insert_sql = text("""
             INSERT INTO documents (filename, file_path, content, embedding, metadata, created_at, updated_at)
-            VALUES (:filename, :file_path, :content, :embedding::vector, :metadata, :created_at, :updated_at)
+            VALUES (
+                :filename,
+                :file_path,
+                :content,
+                CAST(:embedding AS vector),
+                CAST(:metadata AS jsonb),
+                :created_at,
+                :updated_at
+            )
             RETURNING id
         """)
         
@@ -84,7 +100,7 @@ class DocumentService:
                 "file_path": file_path,
                 "content": text_content,
                 "embedding": embedding_str,
-                "metadata": {"file_size": len(content), "file_type": file_ext},
+                "metadata": metadata_json,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }

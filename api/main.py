@@ -4,11 +4,12 @@ Fornece endpoints para upload, busca semântica e RAG
 """
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from database import get_db, init_db
 from minio_client import get_minio_client, ensure_bucket_exists
@@ -41,6 +42,11 @@ async def lifespan(app: FastAPI):
     
     # Cleanup (se necessário)
     pass
+
+
+# Caminho base para arquivos estáticos (UI minimalista)
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 
 
 # Criar aplicação FastAPI
@@ -94,6 +100,20 @@ async def root():
             "health": "/health"
         }
     }
+
+
+@app.get("/ui", response_class=HTMLResponse)
+async def ui():
+    """
+    Interface gráfica minimalista:
+    - Chat baseado em /rag
+    - Upload de arquivos via /upload
+    - Lista de documentos via /documents
+    """
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="UI não encontrada")
+    return FileResponse(index_path)
 
 
 @app.get("/health")
@@ -197,11 +217,11 @@ async def semantic_search(
                 filename,
                 content,
                 metadata,
-                1 - (embedding <=> :query_embedding::vector) as similarity
+                1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
             FROM documents
             WHERE embedding IS NOT NULL
-            AND 1 - (embedding <=> :query_embedding::vector) >= :threshold
-            ORDER BY embedding <=> :query_embedding::vector
+            AND 1 - (embedding <=> CAST(:query_embedding AS vector)) >= :threshold
+            ORDER BY embedding <=> CAST(:query_embedding AS vector)
             LIMIT :limit
         """)
         
@@ -259,10 +279,10 @@ async def rag_query(
                 filename,
                 content,
                 metadata,
-                1 - (embedding <=> :query_embedding::vector) as similarity
+                1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
             FROM documents
             WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> :query_embedding::vector
+            ORDER BY embedding <=> CAST(:query_embedding AS vector)
             LIMIT :limit
         """)
         
@@ -277,16 +297,42 @@ async def rag_query(
         # Preparar contexto
         sources = []
         context_parts = []
-        
+
+        # 1) Resultados por similaridade vetorial
         for row in result:
             sources.append(SearchResult(
                 id=row.id,
                 filename=row.filename,
-                content=row.content[:500] + "..." if len(row.content) > 500 else row.content,
+                content=row.content[:500] + "..." if row.content and len(row.content) > 500 else (row.content or ""),
                 similarity=float(row.similarity),
-                metadata=row.metadata if row.metadata else {}
+                metadata=row.metadata if getattr(row, "metadata", None) else {}
             ))
-            context_parts.append(f"Documento: {row.filename}\nConteúdo: {row.content}")
+            context_parts.append(f"Documento: {row.filename}\nConteúdo: {row.content or ''}")
+
+        # 2) Se o usuário citar explicitamente o nome de algum arquivo
+        # (por exemplo: "use o Marcos_Aurelio_Resume.pdf"), garantimos
+        # que esse documento também entra no contexto, mesmo que a
+        # similaridade vetorial não seja a maior.
+        query_lower = request.query.lower()
+        if query_lower:
+            ids_ja_usados = {s.id for s in sources}
+            # Buscar todos os documentos apenas para fazer o match por filename
+            docs = db.query(Document).all()
+            for doc in docs:
+                if not doc.filename:
+                    continue
+                if doc.id in ids_ja_usados:
+                    continue
+                if doc.filename.lower() in query_lower:
+                    content = doc.content or ""
+                    sources.append(SearchResult(
+                        id=doc.id,
+                        filename=doc.filename,
+                        content=content[:500] + "..." if len(content) > 500 else content,
+                        similarity=1.0,  # forçado como mais relevante para fins de exibição
+                        metadata=getattr(doc, "extra_metadata", None) or {}
+                    ))
+                    context_parts.append(f"Documento (mencionado na pergunta): {doc.filename}\nConteúdo: {content}")
         
         context = "\n\n---\n\n".join(context_parts)
         

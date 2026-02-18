@@ -16,36 +16,16 @@ Plataforma completa de dados para RAG (Retrieval Augmented Generation), totalmen
 
 ## 🏗️ Arquitetura
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         RAG Data Platform                        │
-└─────────────────────────────────────────────────────────────────┘
+![Arquitetura RAG Data Platform](doc/rag-plataform-diagram.png)
 
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Cliente    │──────│  FastAPI     │──────│  PostgreSQL  │
-│   (curl/UI)  │      │   (API)      │      │  + pgvector  │
-└──────────────┘      └──────┬───────┘      └──────────────┘
-                             │
-                    ┌────────┴────────┐
-                    │                 │
-            ┌───────▼──────┐  ┌───────▼──────┐
-            │    MinIO     │  │    Ollama    │
-            │ (Storage)    │  │    (LLM)     │
-            └──────────────┘  └──────────────┘
-                    │
-            ┌───────▼──────┐
-            │  Ingestão    │
-            │  Service     │
-            └──────────────┘
+### Fluxo de Dados
 
-Fluxo de Dados:
-1. Upload → MinIO (armazenamento)
-2. Extração → Texto do documento
-3. Embedding → Vector (384 dim)
-4. Indexação → PostgreSQL + pgvector
-5. Busca → Similaridade vetorial
-6. RAG → Contexto + LLM → Resposta
-```
+1. **Upload** → MinIO (armazenamento)
+2. **Extração** → Texto do documento
+3. **Embedding** → Vector (384 dim)
+4. **Indexação** → PostgreSQL + pgvector
+5. **Busca** → Similaridade vetorial
+6. **RAG** → Contexto + LLM → Resposta
 
 ### Componentes
 
