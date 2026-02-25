@@ -2,6 +2,8 @@
 
 Plataforma completa de dados para RAG (Retrieval Augmented Generation), totalmente containerizada com Docker Compose. Este projeto demonstra uma arquitetura completa de ingestão, indexação vetorial, busca semântica e geração de respostas usando LLMs locais.
 
+https://www.youtube.com/watch?v=KM_TyQsq_LY
+
 ## 📋 Índice
 
 - [Arquitetura](#arquitetura)
